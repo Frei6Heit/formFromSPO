@@ -44,13 +44,23 @@ const questionsData = {
   },
 };
 
+// Словарь для перевода group на русский язык
+const groupTranslations = {
+  students: "студентов",
+  teachers: "преподавателей",
+  parents: "родителей",
+};
+
 const SurveyForm = () => {
   const [group, setGroup] = useState(null);
   const [answers, setAnswers] = useState({});
+  const [errors, setErrors] = useState({}); // Состояние для хранения ошибок
 
   useEffect(() => {
     const { uuid } = queryString.parse(window.location.search);
-    
+
+    console.log(uuid);
+
     if (uuid) {
       fetch(`http://192.168.88.123:8000/forms/${uuid}`)
         .then((res) => res.json())
@@ -61,11 +71,11 @@ const SurveyForm = () => {
               ? {
                   group: data.group,
                   ...questionsData[data.group].question_answer.reduce((acc, q) => {
-                    acc[q] = { value: "", isSatisfied: false }; // Добавляем поле isSatisfied
+                    acc[q] = { value: "", isSatisfied: false, satisfiedReason: "" }; // Добавляем поле isSatisfied и satisfiedReason
                     return acc;
                   }, {}),
                   ...questionsData[data.group].question_choice.questions.reduce((acc, q) => {
-                    acc[q] = 0;
+                    acc[q] = { answer: null, satisfiedReason: "", dissatisfiedReason: "" }; // Добавляем поля для причин
                     return acc;
                   }, {}),
                 }
@@ -76,7 +86,11 @@ const SurveyForm = () => {
   }, []);
 
   const handleYesNoChange = (question, value) => {
-    setAnswers((prev) => ({ ...prev, [question]: value }));
+    setAnswers((prev) => ({
+      ...prev,
+      [question]: { ...prev[question], answer: value, satisfiedReason: "", dissatisfiedReason: "" }, // Сбрасываем причины при изменении ответа
+    }));
+    setErrors((prev) => ({ ...prev, [question]: null })); // Очищаем ошибку при изменении
   };
 
   const handleTextChange = (question, value) => {
@@ -84,6 +98,23 @@ const SurveyForm = () => {
       ...prev,
       [question]: { ...prev[question], value },
     }));
+    setErrors((prev) => ({ ...prev, [question]: null })); // Очищаем ошибку при изменении
+  };
+
+  const handleSatisfiedReasonChange = (question, value) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [question]: { ...prev[question], satisfiedReason: value },
+    }));
+    setErrors((prev) => ({ ...prev, [question]: null })); // Очищаем ошибку при изменении
+  };
+
+  const handleDissatisfiedReasonChange = (question, value) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [question]: { ...prev[question], dissatisfiedReason: value },
+    }));
+    setErrors((prev) => ({ ...prev, [question]: null })); // Очищаем ошибку при изменении
   };
 
   const handleCheckboxToggle = (question) => {
@@ -93,8 +124,39 @@ const SurveyForm = () => {
         ...prev[question],
         isSatisfied: !prev[question].isSatisfied,
         value: prev[question].isSatisfied ? prev[question].value : "", // Очищаем поле, если галочка снята
+        satisfiedReason: prev[question].isSatisfied ? prev[question].satisfiedReason : "", // Очищаем поле, если галочка снята
       },
     }));
+    setErrors((prev) => ({ ...prev, [question]: null })); // Очищаем ошибку при изменении
+  };
+
+  // Функция для проверки заполненности всех полей
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Проверка yes/no вопросов
+    questionsData[group]?.question_choice?.questions.forEach((q) => {
+      if (answers[q]?.answer === null) {
+        newErrors[q] = "Это поле обязательно для заполнения";
+      } else if (answers[q]?.answer === 1 && !answers[q]?.satisfiedReason.trim()) {
+        newErrors[q] = "Пожалуйста, укажите, что именно вас устраивает";
+      } else if (answers[q]?.answer === 0 && !answers[q]?.dissatisfiedReason.trim()) {
+        newErrors[q] = "Пожалуйста, укажите, что именно вас не устраивает";
+      }
+    });
+
+    // Проверка текстовых вопросов
+    questionsData[group]?.question_answer?.forEach((q) => {
+      if (!answers[q]?.isSatisfied && !answers[q]?.value.trim()) {
+        newErrors[q] = "Это поле обязательно для заполнения";
+      }
+      if (answers[q]?.isSatisfied && !answers[q]?.satisfiedReason.trim()) {
+        newErrors[q] = "Пожалуйста, укажите, что именно вас устраивает";
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // Возвращает true, если ошибок нет
   };
 
   const mapAnswersToJson = (group, answers) => {
@@ -143,6 +205,11 @@ const SurveyForm = () => {
   };
 
   const handleSubmit = () => {
+    if (!validateForm()) {
+      console.log("Пожалуйста, заполните все обязательные поля");
+      return; // Прерываем отправку, если есть ошибки
+    }
+
     const { group } = answers; // Извлекаем group из answers
     const jsonData = mapAnswersToJson(group, answers);
 
@@ -167,28 +234,50 @@ const SurveyForm = () => {
 
   return (
     <div className="container mt-5">
-      <h1 className="mb-4">Анкета для {group}</h1>
-
-      <h2>Вопросы с выбором</h2>
+      {/* Используем словарь для перевода group на русский язык */}
+      <h1 className="mb-4">Анкета для {groupTranslations[group]}</h1>
       {questionsData[group]?.question_choice?.questions.map((q, idx) => (
         <div key={idx} className="mb-3">
           <p>{q}</p>
           <button
-            className={`btn ${answers[q] === 1 ? "btn-success" : "btn-outline-success"} me-2`}
+            className={`btn ${answers[q]?.answer === 1 ? "btn-success" : "btn-outline-success"} me-2`}
             onClick={() => handleYesNoChange(q, 1)}
           >
             Да
           </button>
           <button
-            className={`btn ${answers[q] === 0 ? "btn-danger" : "btn-outline-danger"}`}
+            className={`btn ${answers[q]?.answer === 0 ? "btn-danger" : "btn-outline-danger"}`}
             onClick={() => handleYesNoChange(q, 0)}
           >
             Нет
           </button>
+          {errors[q] && <div className="text-danger">{errors[q]}</div>} {/* Отображение ошибки */}
+          {answers[q]?.answer === 1 && (
+            <div className="mt-2">
+              <p>Что именно Вас устраивает?</p>
+              <input
+                type="text"
+                className="form-control"
+                value={answers[q]?.satisfiedReason || ""}
+                onChange={(e) => handleSatisfiedReasonChange(q, e.target.value)}
+              />
+              {errors[q] && <div className="text-danger">{errors[q]}</div>} {/* Отображение ошибки */}
+            </div>
+          )}
+          {answers[q]?.answer === 0 && (
+            <div className="mt-2">
+              <p>Что именно Вас не устраивает?</p>
+              <input
+                type="text"
+                className="form-control"
+                value={answers[q]?.dissatisfiedReason || ""}
+                onChange={(e) => handleDissatisfiedReasonChange(q, e.target.value)}
+              />
+              {errors[q] && <div className="text-danger">{errors[q]}</div>} {/* Отображение ошибки */}
+            </div>
+          )}
         </div>
       ))}
-
-      <h2 className="mt-4">Расширенные вопросы</h2>
       {questionsData[group]?.question_answer?.map((q, idx) => (
         <div key={idx} className="mb-3">
           <p>{q}</p>
@@ -204,13 +293,28 @@ const SurveyForm = () => {
               Меня все устраивает
             </label>
           </div>
-          <input
-            type="text"
-            className="form-control"
-            value={answers[q]?.value || ""}
-            onChange={(e) => handleTextChange(q, e.target.value)}
-            disabled={answers[q]?.isSatisfied || false}
-          />
+          {answers[q]?.isSatisfied ? (
+            <div>
+              <p>Что именно Вас устраивает?</p>
+              <input
+                type="text"
+                className="form-control"
+                value={answers[q]?.satisfiedReason || ""}
+                onChange={(e) => handleSatisfiedReasonChange(q, e.target.value)}
+              />
+              {errors[q] && <div className="text-danger">{errors[q]}</div>} {/* Отображение ошибки */}
+            </div>
+          ) : (
+            <div>
+              <input
+                type="text"
+                className="form-control"
+                value={answers[q]?.value || ""}
+                onChange={(e) => handleTextChange(q, e.target.value)}
+              />
+              {errors[q] && <div className="text-danger">{errors[q]}</div>} {/* Отображение ошибки */}
+            </div>
+          )}
         </div>
       ))}
 
