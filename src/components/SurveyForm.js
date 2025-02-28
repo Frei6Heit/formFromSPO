@@ -268,7 +268,7 @@ const SurveyForm = () => {
         const { uuid } = queryString.parse(window.location.search);
 
         if (uuid) {
-            fetch(`http://192.168.88.123:8000/forms/${uuid}`)
+            fetch(`https://api.phystech.pro/api/v1/forms/${uuid}/`)
                 .then((res) => res.json())
                 .then((data) => {
                     setGroup(data.group);
