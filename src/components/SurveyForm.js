@@ -327,7 +327,7 @@ const SurveyForm = () => {
             }))
         };
 
-        fetch(`http://192.168.88.123/${group}/`, {
+        fetch(`https://api.phystech.pro/api/v1/forms/answer/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(jsonData),
