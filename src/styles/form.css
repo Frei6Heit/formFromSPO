@@ -1,0 +1,78 @@
+/* Центрирование формы */
+.center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    /* Занимает всю высоту экрана */
+    flex-direction: column;
+    text-align: center;
+}
+
+/* Стили для формы */
+.survey-form {
+    max-width: 600px;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+}
+
+/* Стили для кнопок */
+.btn {
+    margin: 5px;
+}
+
+
+/* Центрирование контейнера */
+.center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Контейнер для логотипа и формы */
+.logo-and-form {
+    display: flex;
+    align-items: flex-start; /* Логотип и форма выравниваются по верхнему краю */
+    gap: 20px; /* Расстояние между логотипом и формой */
+    max-width: 1200px;
+    /* width: 100%; */
+}
+
+/* Логотип */
+.logo-container {
+    flex-shrink: 0; /* Логотип не сжимается */
+}
+
+.logo {
+    max-width: 100px; /* Размер логотипа */
+    height: auto;
+}
+
+/* Форма */
+.survey-form {
+    flex-grow: 1; /* Форма занимает оставшееся пространство */
+    max-width: 600px;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+    .logo-and-form {
+        flex-direction: column; /* Логотип и форма располагаются вертикально */
+        align-items: center; /* Центрирование на мобильных устройствах */
+    }
+
+    .logo {
+        margin-bottom: 20px; /* Отступ между логотипом и формой на мобильных устройствах */
+    }
+}
