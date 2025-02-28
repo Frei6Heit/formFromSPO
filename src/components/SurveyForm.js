@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import queryString from 'query-string';
 import { useNavigate } from 'react-router-dom'; // Импортируем useNavigate для перенаправления
 import '../styles/form.css';
+import Cookies from 'js-cookie';
 
 // Данные вопросов с уточняющими вопросами
 const questionsData = {
@@ -251,6 +252,7 @@ const questionsData = {
     }
 };
 
+
 const groupTranslations = {
     students: "студентов",
     teachers: "преподавателей",
@@ -262,11 +264,28 @@ const SurveyForm = () => {
     const [structuralUnitId, setStructuralUnitId] = useState(0);
     const [answers, setAnswers] = useState({});
     const [errors, setErrors] = useState({});
-    const navigate = useNavigate(); // Хук для перенаправления
+    const [isFormDisabled, setIsFormDisabled] = useState(false); 
+    const [isButtonDisabled, setIsButtonDisabled] = useState({}); 
+    const navigate = useNavigate();
 
     useEffect(() => {
         const { uuid } = queryString.parse(window.location.search);
 
+        // Проверяем, была ли форма уже отправлена сегодня
+        const lastSubmissionTime = Cookies.get('lastSubmissionTime');
+        if (lastSubmissionTime) {
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - parseInt(lastSubmissionTime, 10);
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+            if (hoursDiff < 24) {
+                setIsFormDisabled(true);
+                navigate("/later");
+                return;
+            }
+        }
+
+        // Запрос формы
         if (uuid) {
             fetch(`https://api.phystech.pro/api/v1/forms/${uuid}/`)
                 .then((res) => res.json())
@@ -280,9 +299,17 @@ const SurveyForm = () => {
                     setAnswers(initialAnswers);
                 });
         }
-    }, []);
+    }, [navigate]); 
 
     const handleAnswerChange = (key, mark) => {
+        if (isFormDisabled || isButtonDisabled[key]) return; 
+
+        setIsButtonDisabled(prev => ({ ...prev, [key]: true }));
+        setTimeout(() => {
+            setIsButtonDisabled(prev => ({ ...prev, [key]: false }));
+        }, 200);
+
+        // Устанавливаем новый ответ
         setAnswers(prev => ({
             ...prev,
             [key]: { ...prev[key], mark, comment: "" }
@@ -327,6 +354,7 @@ const SurveyForm = () => {
             }))
         };
 
+        // отправка данных на сервер
         fetch(`https://api.phystech.pro/api/v1/forms/answer/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -335,7 +363,9 @@ const SurveyForm = () => {
             .then((response) => {
                 if (response.ok) {
                     console.log("Ответ успешно отправлен");
-                    navigate("/thank-you"); // Перенаправляем на страницу с благодарностью
+                    // Записываем время отправки формы в cookies
+                    Cookies.set('lastSubmissionTime', new Date().getTime(), { expires: 1 }); // expires: 1 - куки на 1 день
+                    navigate("/thank-you");
                 } else {
                     console.error("Ошибка при отправке");
                 }
@@ -348,12 +378,9 @@ const SurveyForm = () => {
     if (!group) return <p>Загрузка...</p>;
 
     return (
-        <div className="center-container">
-            {/* Контейнер для логотипа и формы */}
+        <div className="center-container marg">
             <div className="logo-and-form">
-                {/* Логотип */}
                 <img src="/moskovskoj.png" alt="Логотип" className="logo" />
-                {/* Форма */}
                 <div className="survey-form">
                     <h1 className="mb-4">Анкета для {groupTranslations[group]}</h1>
                     {questionsData[group]?.questions.map((q, idx) => (
@@ -362,12 +389,14 @@ const SurveyForm = () => {
                             <button
                                 className={`btn ${answers[q.key]?.mark === 1 ? "btn-success" : "btn-outline-success"} me-2`}
                                 onClick={() => handleAnswerChange(q.key, 1)}
+                                disabled={isFormDisabled || isButtonDisabled[q.key]} // Блокируем кнопку, если форма или кнопки отключены
                             >
                                 Да
                             </button>
                             <button
                                 className={`btn ${answers[q.key]?.mark === 0 ? "btn-danger" : "btn-outline-danger"}`}
                                 onClick={() => handleAnswerChange(q.key, 0)}
+                                disabled={isFormDisabled || isButtonDisabled[q.key]} // Блокируем кнопку, если форма или кнопки отключены
                             >
                                 Нет
                             </button>
@@ -380,13 +409,14 @@ const SurveyForm = () => {
                                         className="form-control"
                                         value={answers[q.key]?.comment || ""}
                                         onChange={(e) => handleCommentChange(q.key, e.target.value)}
+                                        disabled={isFormDisabled} // Блокируем поле ввода, если форма отключена
                                     />
                                     {errors[q.key] && <div className="text-danger">{errors[q.key]}</div>}
                                 </div>
                             )}
                         </div>
                     ))}
-                    <button className="btn btn-primary mt-4" onClick={handleSubmit}>
+                    <button className="btn btn-primary mt-4" onClick={handleSubmit} disabled={isFormDisabled}>
                         Отправить
                     </button>
                 </div>

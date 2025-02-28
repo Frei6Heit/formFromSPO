@@ -1,12 +1,14 @@
-/* Центрирование формы */
 .center-container {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    /* Занимает всю высоту экрана */
     flex-direction: column;
     text-align: center;
+}
+
+.marg {
+    margin: 50px 0;
 }
 
 /* Стили для формы */
@@ -19,21 +21,13 @@
     background-color: #f9f9f9;
 }
 
+
 /* Стили для кнопок */
 .btn {
     margin: 5px;
 }
 
 
-/* Центрирование контейнера */
-.center-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
-    box-sizing: border-box;
-}
 
 /* Контейнер для логотипа и формы */
 .logo-and-form {
@@ -52,17 +46,6 @@
 .logo {
     max-width: 100px; /* Размер логотипа */
     height: auto;
-}
-
-/* Форма */
-.survey-form {
-    flex-grow: 1; /* Форма занимает оставшееся пространство */
-    max-width: 600px;
-    width: 100%;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    background-color: #f9f9f9;
 }
 
 /* Адаптация для мобильных устройств */
